@@ -40,6 +40,7 @@ type BPlusTree struct {
 	minKeyNum int
 }
 
+// NewBPlusTree generates a new b plus tree by the given options
 func NewBPlusTree(options ...Option) (*BPlusTree, error) {
 	bpt := &BPlusTree{order: defaultOrder}
 	for _, opt := range options {
@@ -54,8 +55,8 @@ func NewBPlusTree(options ...Option) (*BPlusTree, error) {
 // Init inits a bpt whose root is nil
 func (bpt *BPlusTree) init(key, value []byte) {
 	keys := make([][]byte, bpt.order-1)
-	copy(keys[0], key)
-	pointers := make([]*pointer, bpt.order-1)
+	keys[0] = copyBytes(key)
+	pointers := make([]*pointer, bpt.order)
 	pointers[0] = &pointer{data: value}
 	bpt.root = &node{
 		leaf:     true,
@@ -72,6 +73,9 @@ func (bpt *BPlusTree) init(key, value []byte) {
 // otherwise nil and false
 func (bpt *BPlusTree) Get(key []byte) ([]byte, bool) {
 	if bpt.root == nil {
+		return nil, false
+	}
+	if key == nil {
 		return nil, false
 	}
 	targetLeaf := bpt.findLeafByKey(key)
@@ -109,13 +113,15 @@ func (bpt *BPlusTree) Put(key, value []byte) ([]byte, bool) {
 		bpt.init(key, value)
 		return nil, false
 	}
+	if key == nil {
+		return nil, false
+	}
 	targetLeaf := bpt.findLeafByKey(key)
 
 	return bpt.putIntoLeaf(targetLeaf, key, value)
 }
 
 // putIntoLeaf puts a pair of kv into the given leaf node
-// putIntoLeaf puts key and value into the node.
 func (bpt *BPlusTree) putIntoLeaf(n *node, k, v []byte) ([]byte, bool) {
 	insertPos := 0
 	for insertPos < n.keyNums {
@@ -444,22 +450,13 @@ func (bpt *BPlusTree) removeFromIndex(key []byte) {
 				// the key is found in the index
 				// take the right sub-tree and find the leftmost key
 				// and update the key
-				current.keys[position] = findLeftmostKey(current.pointers[position+1].convertToNode())
+				//current.keys[position] = current.pointers[position+1].convertToNode().findMostLeftKey()
+				current.keys[position] = findLeftMostKey(current.pointers[position+1].convertToNode())
 			}
 		}
 
 		current = current.pointers[position].convertToNode()
 	}
-}
-
-// findLeftmostKey returns the leftmost key for the node.
-func findLeftmostKey(n *node) []byte {
-	current := n
-	for !current.leaf {
-		current = current.pointers[0].convertToNode()
-	}
-
-	return current.keys[0]
 }
 
 // rebalancedFromLeafNode starts rebalancing the tree from the leaf node.

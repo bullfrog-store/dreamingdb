@@ -23,17 +23,6 @@ type node struct {
 	pointers []*pointer
 }
 
-// newNode returns a new node
-func newNode(leaf bool, parent *node, order int) *node {
-	return &node{
-		leaf:     leaf,
-		parent:   parent,
-		keys:     make([][]byte, order-1),
-		keyNums:  0,
-		pointers: make([]*pointer, order-1),
-	}
-}
-
 // append appends the key and pointer to node
 func (n *node) append(key []byte, p *pointer) {
 	keyPosition, pointerPosition := n.keyNums, n.keyNums
@@ -57,7 +46,6 @@ func (n *node) insertAt(keyPosition, pointerPosition int, key []byte, p *pointer
 	pointerNums := n.keyNums
 	if !n.leaf {
 		pointerNums++
-		p.convertToNode().parent = n
 	}
 	// shift all the pointers after pointerPosition
 	for i := pointerNums; i > pointerPosition; i-- {
@@ -68,6 +56,7 @@ func (n *node) insertAt(keyPosition, pointerPosition int, key []byte, p *pointer
 	n.pointers[pointerPosition] = p
 }
 
+// deleteAt deletes the entry of the specified position
 func (n *node) deleteAt(keyPosition, pointerPosition int) {
 	// shift all the keys before keyPosition
 	for i := keyPosition; i < n.keyNums-1; i++ {
@@ -79,7 +68,7 @@ func (n *node) deleteAt(keyPosition, pointerPosition int) {
 		pointerNums++
 	}
 	// shift all the pointers before pointPosition
-	for i := pointerPosition; i < n.keyNums-1; i++ {
+	for i := pointerPosition; i < pointerNums-1; i++ {
 		n.pointers[i] = n.pointers[i+1]
 	}
 	n.pointers[pointerNums-1] = nil
@@ -122,15 +111,6 @@ func (n *node) setLastPointer(p *pointer) error {
 	return nil
 }
 
-// nextLeafNode returns the next leaf node,
-// it only works for leaf node.
-func (n *node) nextLeafNode() (*node, error) {
-	if !n.leaf {
-		return nil, errors.New("only works for leaf node")
-	}
-	return n.pointers[len(n.pointers)-1].convertToNode(), nil
-}
-
 // pointerToNextLeafNode returns the pointer to next leaf node, it actually
 // returns the last pointer, so it only works for leaf node.
 func (n *node) pointerToNextLeafNode() *pointer {
@@ -149,4 +129,21 @@ func (n *node) copyFromRight(from *node) {
 		n.pointers[n.keyNums] = from.pointers[from.keyNums]
 		n.pointers[n.keyNums].convertToNode().parent = n
 	}
+}
+
+// findMostLeftKey finds the most left key
+func (n *node) findMostLeftKey() []byte {
+	current := n
+	for !current.leaf {
+		current = current.pointers[0].convertToNode()
+	}
+	return current.keys[0]
+}
+
+func findLeftMostKey(n *node) []byte {
+	current := n
+	for !current.leaf {
+		current = current.pointers[0].convertToNode()
+	}
+	return current.keys[0]
 }

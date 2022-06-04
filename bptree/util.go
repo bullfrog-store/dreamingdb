@@ -6,3 +6,10 @@ func ceil(a, b int) int {
 	}
 	return a/b + 1
 }
+
+func copyBytes(s []byte) []byte {
+	c := make([]byte, len(s))
+	copy(c, s)
+
+	return c
+}
